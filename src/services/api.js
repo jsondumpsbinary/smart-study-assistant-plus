@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5678/webhook-test/generate-notes';
+const API_URL = 'http://localhost:5678/webhook/generate-notes';
 
 export const generateStudyPlan = async (topic, days, hoursPerDay) => {
   try {
