@@ -18,24 +18,25 @@ const Dashboard = () => {
     try {
       const data = await generateStudyPlan(formData.topic, formData.days, formData.hoursPerDay);
       
-      let finalNotes = data?.ai_output || data?.notes || '';
-      let finalFlashcards = data?.flashcards || [];
+      let finalNotes = data?.notes || data?.ai_output || '';
+      let rawFlashcards = data?.flashcards || [];
+      
+      // Structure mapper for Flashcards (Groq outputs 'q' and 'a', our component expects 'question' and 'answer')
+      let mappedFlashcards = rawFlashcards.map(fc => ({
+        question: fc.q || fc.question,
+        answer: fc.a || fc.answer
+      }));
 
       // If the backend returned a cohesive string in ai_output, let's extract the Flashcards!
-      if (typeof finalNotes === 'string' && finalFlashcards.length === 0) {
-        // Look for "Q:" and "A:" patterns in the text
-        // By splitting on "Q:", the first part becomes the main notes, and subsequent parts are Q&A blocks.
+      if (typeof finalNotes === 'string' && mappedFlashcards.length === 0) {
         const parts = finalNotes.split(/Q:/);
-        
         if (parts.length > 1) {
-          finalNotes = parts[0].trim(); // Everything before the first "Q:" becomes the notes
-
+          finalNotes = parts[0].trim();
           for (let i = 1; i < parts.length; i++) {
             const qa = parts[i].split(/A:/);
             if (qa.length >= 2) {
-               finalFlashcards.push({ 
+               mappedFlashcards.push({ 
                  question: qa[0].trim(), 
-                 // Re-join just in case the answer itself contains "A:"
                  answer: qa.slice(1).join("A:").trim() 
                });
             }
@@ -43,11 +44,16 @@ const Dashboard = () => {
         }
       }
 
-      // If nothing generated correctly, fall back to default
+      // Format custom Groq objects back into strings for the generic display, or keep them for custom plan handling
+      if (typeof finalNotes === 'object' && Array.isArray(finalNotes)) {
+         finalNotes = finalNotes.map(section => `### ${section.heading}\n- ${section.bullets?.join('\n- ')}`).join('\n\n');
+      }
+
       const hasValidData = finalNotes.length > 0;
       const resultData = hasValidData ? {
         notes: finalNotes,
-        flashcards: finalFlashcards
+        flashcards: mappedFlashcards,
+        plan: data?.plan
       } : {
         notes: `Here is your generated study plan for ${formData.topic}. It spans across ${formData.days} days, requiring ${formData.hoursPerDay} hours per day.\n\nEnjoy your learning journey!`,
         flashcards: [
@@ -57,7 +63,6 @@ const Dashboard = () => {
       };
       
       setResult(resultData);
-      // Save to sessionStorage for other tabs
       sessionStorage.setItem('studyData', JSON.stringify(resultData));
       
     } catch (err) {
@@ -96,6 +101,25 @@ const Dashboard = () => {
       {/* Outputs */}
       {result && (
         <div className="space-y-8 mt-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          
+          {/* Custom Plan rendering if exists */}
+          {result.plan && Array.isArray(result.plan) && (
+            <div className="bg-surface border border-surface-hover rounded-2xl p-8 shadow-lg">
+               <h2 className="text-2xl font-bold mb-6 text-primary">Daily Study Plan</h2>
+               <div className="space-y-4">
+                 {result.plan.map((p, i) => (
+                   <div key={i} className="flex gap-4 p-4 border border-surface-hover rounded-xl bg-background">
+                     <div className="font-bold whitespace-nowrap text-primary">{p.day}</div>
+                     <div>
+                       <div className="font-semibold text-text-main">{p.topic_focus}</div>
+                       <div className="text-sm text-text-muted">{p.task}</div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
+
           <NoteDisplay notes={result.notes} />
           
           {result.flashcards && result.flashcards.length > 0 && (
