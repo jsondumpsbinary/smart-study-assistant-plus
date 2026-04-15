@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Layers } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Layers, Clock, Brain, TrendingUp } from 'lucide-react';
 import clsx from 'clsx';
 
 const Sidebar = () => {
@@ -7,6 +7,9 @@ const Sidebar = () => {
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Notes', path: '/notes', icon: <BookOpen size={20} /> },
     { name: 'Flashcards', path: '/flashcards', icon: <Layers size={20} /> },
+    { name: 'Quiz Engine', path: '/quiz', icon: <Brain size={20} /> },
+    { name: 'Progress Tracking', path: '/progress', icon: <TrendingUp size={20} /> },
+    { name: 'History', path: '/history', icon: <Clock size={20} /> },
   ];
 
   return (
