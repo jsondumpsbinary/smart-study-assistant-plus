@@ -56,7 +56,7 @@ const Quiz = () => {
        localStorage.setItem('quizProgress', JSON.stringify(history));
        
     } catch (err) {
-       setError("Evaluation servers are currently busy. Ensure your evaluate webhook is running.");
+       setError(err.message || "Evaluation servers are currently busy. Ensure your evaluate webhook is running.");
     } finally {
        setIsEvaluating(false);
     }

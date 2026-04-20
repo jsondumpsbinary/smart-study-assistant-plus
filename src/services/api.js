@@ -1,5 +1,5 @@
-const API_URL = 'http://localhost:5678/webhook/generate-notes';
-const EVAL_API_URL = 'http://localhost:5678/webhook/evaluate-quiz';
+const API_URL = '/api/webhook-test/generate-notes';
+const EVAL_API_URL = '/api/webhook-test/evaluate-quiz';
 
 export const generateStudyPlan = async (topic, days, hoursPerDay) => {
   try {
@@ -10,8 +10,8 @@ export const generateStudyPlan = async (topic, days, hoursPerDay) => {
       },
       body: JSON.stringify({
         topic: topic,
-        days: Number(days),
-        hoursPerDay: Number(hoursPerDay)
+        date: String(days),
+        hours: String(hoursPerDay)
       })
     });
 
@@ -40,7 +40,8 @@ export const evaluateQuiz = async (topic, answers) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Server error: ${response.statusText}`);
+      const errText = await response.text();
+      throw new Error(`Server error: ${response.status} ${response.statusText} - ${errText}`);
     }
 
     const data = await response.json();
