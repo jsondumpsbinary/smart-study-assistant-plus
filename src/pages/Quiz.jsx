@@ -107,10 +107,15 @@ const Quiz = () => {
                       // More robust string matching to find the correct Option in the array
                       let isCorrectOpt = false;
                       if (q.answer) {
-                         const normQAns = String(q.answer).trim().toLowerCase();
+                         const normQAns = String(q.answer).trim().toLowerCase().replace(/^option\s+/, '');
                          const normOpt = String(opt).trim().toLowerCase();
                          if (normOpt === normQAns || normOpt.startsWith(normQAns + ')') || normOpt.startsWith(normQAns + '.') || normQAns.startsWith(normOpt)) {
                              isCorrectOpt = true;
+                         } else if (normQAns.length === 1 && /[a-e]/.test(normQAns)) {
+                             const expectedIdx = normQAns.charCodeAt(0) - 97; // 'a' is 0, 'b' is 1
+                             if (optIdx === expectedIdx) {
+                                 isCorrectOpt = true;
+                             }
                          }
                       }
 
