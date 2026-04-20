@@ -81,36 +81,78 @@ const Quiz = () => {
 
       {quizzes.length > 0 ? (
         <div className="space-y-8">
-          {quizzes.map((q, i) => (
-             <div key={i} className="bg-surface border border-surface-hover rounded-xl p-6 shadow-md">
+          {quizzes.map((q, i) => {
+             const evalResult = evaluation?.results?.[i];
+             return (
+             <div key={i} className={`bg-surface border ${evalResult ? (evalResult.isCorrect ? 'border-success' : 'border-error') : 'border-surface-hover'} rounded-xl p-6 shadow-md transition-colors`}>
                 <h3 className="text-lg font-bold mb-4">{i + 1}. {q.question}</h3>
                 
                 {q.type === 'mcq' && q.options ? (
                   <div className="space-y-3">
-                    {q.options.map((opt, optIdx) => (
-                      <label key={optIdx} className="flex items-center gap-3 p-3 border border-surface-hover rounded-lg cursor-pointer hover:bg-surface-hover transition-colors">
-                        <input 
-                          type="radio" 
-                          name={`q-${i}`} 
-                          value={opt} 
-                          checked={answers[i] === opt}
-                          onChange={() => handleOptionChange(i, opt)}
-                          className="w-4 h-4 text-primary"
-                        />
-                        <span>{opt}</span>
-                      </label>
-                    ))}
+                    {q.options.map((opt, optIdx) => {
+                      let optionStyle = 'border-surface-hover opacity-100';
+                      if (!evaluation) {
+                        if (answers[i] === opt) {
+                          optionStyle = 'border-primary bg-primary/10';
+                        } else {
+                          optionStyle = 'border-surface-hover hover:bg-surface-hover';
+                        }
+                      } else {
+                        if (opt === q.answer) {
+                          optionStyle = 'border-success bg-success/20 font-medium text-success';
+                        } else if (answers[i] === opt && !evalResult?.isCorrect) {
+                          optionStyle = 'border-error bg-error/20 text-error';
+                        } else {
+                          optionStyle = 'border-surface-hover opacity-50';
+                        }
+                      }
+
+                      return (
+                        <label key={optIdx} className={`flex items-center gap-3 p-3 border rounded-lg ${evaluation ? 'cursor-default' : 'cursor-pointer'} transition-all ${optionStyle}`}>
+                          <input 
+                            type="radio" 
+                            name={`q-${i}`} 
+                            value={opt} 
+                            checked={answers[i] === opt}
+                            onChange={() => !evaluation && handleOptionChange(i, opt)}
+                            disabled={!!evaluation}
+                            className={`w-4 h-4 ${evaluation ? (opt === q.answer ? 'text-success' : 'text-primary') : 'text-primary'}`}
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <textarea 
-                    className="w-full bg-background border border-surface-hover rounded-xl p-4 text-text-main focus:outline-none focus:border-primary transition-colors min-h-[100px]"
-                    placeholder="Type your answer here..."
-                    value={answers[i] || ''}
-                    onChange={(e) => handleOptionChange(i, e.target.value)}
-                  />
+                  <div className="space-y-4">
+                    <textarea 
+                      className={`w-full bg-background border ${evaluation ? (evalResult?.isCorrect ? 'border-success bg-success/5' : 'border-error bg-error/5') : 'border-surface-hover focus:border-primary'} rounded-xl p-4 text-text-main focus:outline-none transition-colors min-h-[100px]`}
+                      placeholder="Type your answer here..."
+                      value={answers[i] || ''}
+                      onChange={(e) => !evaluation && handleOptionChange(i, e.target.value)}
+                      disabled={!!evaluation}
+                    />
+                    {evaluation && !evalResult?.isCorrect && q.answer && (
+                       <div className="bg-success/10 p-4 rounded-xl border border-success/30 text-success">
+                         <p className="text-sm font-bold mb-1 flex items-center gap-2"><CheckCircle2 size={16}/> Expected Answer:</p>
+                         <p className="text-sm opacity-90">{q.answer}</p>
+                       </div>
+                    )}
+                  </div>
+                )}
+
+                {evalResult && (
+                  <div className={`mt-6 p-4 rounded-xl flex items-start gap-4 ${evalResult.isCorrect ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                    {evalResult.isCorrect ? <CheckCircle2 className="shrink-0 mt-0.5" /> : <AlertCircle className="shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="font-bold text-lg mb-1">{evalResult.isCorrect ? 'Correct!' : 'Incorrect'}</p>
+                      <p className="text-sm opacity-90">{evalResult.explanation}</p>
+                    </div>
+                  </div>
                 )}
              </div>
-          ))}
+             );
+          })}
 
           {!evaluation && (
              <button 
