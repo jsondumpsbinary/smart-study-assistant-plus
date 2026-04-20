@@ -83,27 +83,51 @@ const Quiz = () => {
         <div className="space-y-8">
           {quizzes.map((q, i) => {
              const evalResult = evaluation?.results?.[i];
+             
+             // Determine if user got this right, either from AI eval or locally for MCQ
+             let isUserRight = false;
+             if (evalResult !== undefined) {
+                 isUserRight = evalResult.isCorrect;
+             } else if (q.type === 'mcq' && q.answer) {
+                 const normAns = String(answers[i] || '').trim().toLowerCase();
+                 const normQAns = String(q.answer).trim().toLowerCase();
+                 isUserRight = (normAns === normQAns || normAns.startsWith(normQAns + ')') || normQAns.startsWith(normAns));
+             }
+
              return (
-             <div key={i} className={`bg-surface border ${evalResult ? (evalResult.isCorrect ? 'border-success' : 'border-error') : 'border-surface-hover'} rounded-xl p-6 shadow-md transition-colors`}>
+             <div key={i} className={`bg-surface border ${evaluation ? (isUserRight ? 'border-success' : 'border-error') : 'border-surface-hover'} rounded-xl p-6 shadow-md transition-colors`}>
                 <h3 className="text-lg font-bold mb-4">{i + 1}. {q.question}</h3>
                 
                 {q.type === 'mcq' && q.options ? (
                   <div className="space-y-3">
                     {q.options.map((opt, optIdx) => {
                       let optionStyle = 'border-surface-hover opacity-100';
+                      let isUserAnswer = (answers[i] === opt);
+                      
+                      // More robust string matching to find the correct Option in the array
+                      let isCorrectOpt = false;
+                      if (q.answer) {
+                         const normQAns = String(q.answer).trim().toLowerCase();
+                         const normOpt = String(opt).trim().toLowerCase();
+                         if (normOpt === normQAns || normOpt.startsWith(normQAns + ')') || normOpt.startsWith(normQAns + '.') || normQAns.startsWith(normOpt)) {
+                             isCorrectOpt = true;
+                         }
+                      }
+
                       if (!evaluation) {
-                        if (answers[i] === opt) {
+                        if (isUserAnswer) {
                           optionStyle = 'border-primary bg-primary/10';
                         } else {
                           optionStyle = 'border-surface-hover hover:bg-surface-hover';
                         }
                       } else {
-                        if (opt === q.answer) {
-                          optionStyle = 'border-success bg-success/20 font-medium text-success';
-                        } else if (answers[i] === opt && !evalResult?.isCorrect) {
-                          optionStyle = 'border-error bg-error/20 text-error';
+                        // After submission!
+                        if (isUserAnswer) {
+                            optionStyle = isUserRight ? 'border-success bg-success/20 font-bold text-success' : 'border-error bg-error/20 font-bold text-error';
+                        } else if (isCorrectOpt) {
+                            optionStyle = 'border-success bg-success/20 font-medium text-success';
                         } else {
-                          optionStyle = 'border-surface-hover opacity-50';
+                            optionStyle = 'border-surface-hover opacity-50';
                         }
                       }
 
@@ -113,10 +137,10 @@ const Quiz = () => {
                             type="radio" 
                             name={`q-${i}`} 
                             value={opt} 
-                            checked={answers[i] === opt}
+                            checked={isUserAnswer}
                             onChange={() => !evaluation && handleOptionChange(i, opt)}
                             disabled={!!evaluation}
-                            className={`w-4 h-4 ${evaluation ? (opt === q.answer ? 'text-success' : 'text-primary') : 'text-primary'}`}
+                            className={`w-4 h-4 ${evaluation ? (isUserAnswer ? (isUserRight ? 'text-success' : 'text-error') : (isCorrectOpt ? 'text-success' : 'text-primary')) : 'text-primary'}`}
                           />
                           <span>{opt}</span>
                         </label>
@@ -126,13 +150,13 @@ const Quiz = () => {
                 ) : (
                   <div className="space-y-4">
                     <textarea 
-                      className={`w-full bg-background border ${evaluation ? (evalResult?.isCorrect ? 'border-success bg-success/5' : 'border-error bg-error/5') : 'border-surface-hover focus:border-primary'} rounded-xl p-4 text-text-main focus:outline-none transition-colors min-h-[100px]`}
+                      className={`w-full bg-background border ${evaluation ? (isUserRight ? 'border-success bg-success/5' : 'border-error bg-error/5') : 'border-surface-hover focus:border-primary'} rounded-xl p-4 text-text-main focus:outline-none transition-colors min-h-[100px]`}
                       placeholder="Type your answer here..."
                       value={answers[i] || ''}
                       onChange={(e) => !evaluation && handleOptionChange(i, e.target.value)}
                       disabled={!!evaluation}
                     />
-                    {evaluation && !evalResult?.isCorrect && q.answer && (
+                    {evaluation && !isUserRight && q.answer && (
                        <div className="bg-success/10 p-4 rounded-xl border border-success/30 text-success">
                          <p className="text-sm font-bold mb-1 flex items-center gap-2"><CheckCircle2 size={16}/> Expected Answer:</p>
                          <p className="text-sm opacity-90">{q.answer}</p>
@@ -141,13 +165,15 @@ const Quiz = () => {
                   </div>
                 )}
 
-                {evalResult && (
-                  <div className={`mt-6 p-4 rounded-xl flex items-start gap-4 ${evalResult.isCorrect ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                    {evalResult.isCorrect ? <CheckCircle2 className="shrink-0 mt-0.5" /> : <AlertCircle className="shrink-0 mt-0.5" />}
-                    <div>
-                      <p className="font-bold text-lg mb-1">{evalResult.isCorrect ? 'Correct!' : 'Incorrect'}</p>
-                      <p className="text-sm opacity-90">{evalResult.explanation}</p>
+                {evaluation && (
+                  <div className={`mt-6 p-4 rounded-xl flex items-start gap-4 flex-col sm:flex-row ${isUserRight ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                    <div className="flex items-center gap-3">
+                        {isUserRight ? <CheckCircle2 className="shrink-0" /> : <AlertCircle className="shrink-0" />}
+                        <p className="font-bold text-lg">{isUserRight ? 'Correct!' : 'Incorrect'}</p>
                     </div>
+                    {evalResult?.explanation && (
+                        <p className="text-sm opacity-90 sm:mt-1">{evalResult.explanation}</p>
+                    )}
                   </div>
                 )}
              </div>
