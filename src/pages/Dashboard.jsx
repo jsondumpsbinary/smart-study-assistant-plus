@@ -4,6 +4,7 @@ import StudyForm from '../components/StudyForm';
 import NoteDisplay from '../components/NoteDisplay';
 import Flashcard from '../components/Flashcard';
 import { AlertCircle, CheckCircle2, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,6 +12,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [rating, setRating] = useState(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const { currentUser } = useAuth();
 
   // Auto-load last active session on navigate back to dashboard
   useEffect(() => {
@@ -28,7 +30,7 @@ const Dashboard = () => {
     setResult(null);
 
     try {
-      const data = await generateStudyPlan(formData.topic, formData.days, formData.hoursPerDay);
+      const data = await generateStudyPlan(formData.topic, formData.days, formData.hoursPerDay, currentUser);
       
       let finalNotes = data?.notes || data?.ai_output || '';
       let rawFlashcards = data?.flashcards || [];
@@ -83,14 +85,15 @@ const Dashboard = () => {
       sessionStorage.setItem('studyData', JSON.stringify(resultData));
 
       // Append to persistent History
-      const currentHistory = JSON.parse(localStorage.getItem('studyHistory') || '[]');
+      const historyKey = `studyHistory_${currentUser}`;
+      const currentHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
       currentHistory.unshift({
         id: Date.now(),
         topic: formData.topic,
         date: new Date().toLocaleDateString(),
         data: resultData
       });
-      localStorage.setItem('studyHistory', JSON.stringify(currentHistory));
+      localStorage.setItem(historyKey, JSON.stringify(currentHistory));
       
     } catch (err) {
       setError(err.message || 'An unexpected error occurred while generating your plan.');

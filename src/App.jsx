@@ -6,22 +6,34 @@ import Flashcards from './pages/Flashcards';
 import History from './pages/History';
 import Quiz from './pages/Quiz';
 import Progress from './pages/Progress';
+import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <Router>
-      <Layout>
+    <AuthProvider>
+      <Router>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/notes" element={<Notes />} />
-          <Route path="/flashcards" element={<Flashcards />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/history" element={<History />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={
+            <ProtectedRoute>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/notes" element={<Notes />} />
+                  <Route path="/flashcards" element={<Flashcards />} />
+                  <Route path="/quiz" element={<Quiz />} />
+                  <Route path="/progress" element={<Progress />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Layout>
+            </ProtectedRoute>
+          } />
         </Routes>
-      </Layout>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 

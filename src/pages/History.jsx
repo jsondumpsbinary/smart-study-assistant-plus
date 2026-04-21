@@ -1,25 +1,138 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Trash2, FolderOpen, Download } from 'lucide-react';
+import { Clock, FolderOpen, Download, AlertCircle, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { getUserNotes } from '../services/api';
 
 const History = () => {
   const [history, setHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const getHiddenNotesKey = (username) => `hiddenStudyHistory_${username}`;
 
   useEffect(() => {
-    const savedHistory = JSON.parse(localStorage.getItem('studyHistory') || '[]');
-    setHistory(savedHistory);
-  }, []);
+    if (!currentUser) {
+      setHistory([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const normalizeNotes = (notes) => {
+      if (Array.isArray(notes)) {
+        return notes.map(section => `### ${section.heading}\n- ${section.bullets?.join('\n- ')}`).join('\n\n');
+      }
+
+      return typeof notes === 'string' ? notes : '';
+    };
+
+    const normalizeFlashcards = (flashcards) => {
+      if (!Array.isArray(flashcards)) return [];
+
+      return flashcards.map((fc) => ({
+        question: fc.q || fc.question || 'Untitled question',
+        answer: fc.a || fc.answer || ''
+      }));
+    };
+
+    const normalizeRemoteItems = (items = []) => (
+      items.map((item) => ({
+        id: item.id,
+        topic: item.topic,
+        date: item.createdTime
+          ? new Date(item.createdTime).toLocaleDateString()
+          : 'Unknown date',
+        source: 'remote',
+        data: {
+          notes: normalizeNotes(item.notes),
+          flashcards: normalizeFlashcards(item.flashcards),
+          plan: item.plan || [],
+          quizzes: item.quizzes || []
+        }
+      }))
+    );
+
+    const normalizeLocalItems = (items = []) => (
+      items.map((item) => ({
+        ...item,
+        source: item.source || 'local'
+      }))
+    );
+
+    const filterHiddenItems = (items = []) => {
+      const hiddenIds = new Set(JSON.parse(localStorage.getItem(getHiddenNotesKey(currentUser)) || '[]'));
+      return items.filter((item) => !hiddenIds.has(item.id));
+    };
+
+    const loadHistory = async () => {
+      setIsLoading(true);
+      setLoadError('');
+
+      const historyKey = `studyHistory_${currentUser}`;
+      const savedHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+      try {
+        const remoteData = await getUserNotes(currentUser);
+        const remoteHistory = normalizeRemoteItems(remoteData.items || []);
+        const localHistory = normalizeLocalItems(savedHistory);
+        const seenIds = new Set(remoteHistory.map((item) => item.id));
+        const mergedHistory = [
+          ...remoteHistory,
+          ...localHistory.filter((item) => !seenIds.has(item.id))
+        ];
+
+        setHistory(filterHiddenItems(mergedHistory));
+      } catch (error) {
+        setHistory(filterHiddenItems(normalizeLocalItems(savedHistory)));
+        setLoadError('Showing local history only because the Notion sync endpoint could not be reached.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [currentUser]);
 
   const handleLoadSession = (historyItem) => {
     sessionStorage.setItem('studyData', JSON.stringify(historyItem.data));
     navigate('/');
   };
 
-  const handleDelete = (id) => {
-    const newHistory = history.filter(item => item.id !== id);
-    setHistory(newHistory);
-    localStorage.setItem('studyHistory', JSON.stringify(newHistory));
+  const removeLocalMatches = (historyItem) => {
+    if (!currentUser) return;
+
+    const historyKey = `studyHistory_${currentUser}`;
+    const savedHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const nextHistory = savedHistory.filter((item) => (
+      !(item.topic === historyItem.topic && item.date === historyItem.date)
+    ));
+
+    localStorage.setItem(historyKey, JSON.stringify(nextHistory));
+  };
+
+  const persistHiddenItem = (historyItem) => {
+    if (!currentUser) return;
+
+    const hiddenKey = getHiddenNotesKey(currentUser);
+    const hiddenIds = new Set(JSON.parse(localStorage.getItem(hiddenKey) || '[]'));
+    hiddenIds.add(historyItem.id);
+    localStorage.setItem(hiddenKey, JSON.stringify(Array.from(hiddenIds)));
+  };
+
+  const handleDelete = (historyItem) => {
+    if (!currentUser) return;
+
+    const confirmed = window.confirm(`Delete "${historyItem.topic}" from your history?`);
+    if (!confirmed) return;
+
+    persistHiddenItem(historyItem);
+    removeLocalMatches(historyItem);
+
+    setHistory((prevHistory) => prevHistory.filter((item) => {
+      if (item.id === historyItem.id) return false;
+      return !(item.topic === historyItem.topic && item.date === historyItem.date);
+    }));
   };
 
   const handleDownloadPdf = (item) => {
@@ -71,7 +184,18 @@ const History = () => {
         <p className="text-text-muted">Review your past generated study plans and notes.</p>
       </header>
 
-      {history.length > 0 ? (
+      {loadError && (
+        <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl flex items-center gap-3">
+          <AlertCircle size={24} />
+          <p>{loadError}</p>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="bg-surface border border-surface-hover rounded-2xl p-12 text-center text-text-muted">
+          Loading your study history...
+        </div>
+      ) : history.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {history.map((item) => (
             <div key={item.id} className="bg-surface border border-surface-hover rounded-2xl p-6 shadow-lg flex flex-col group animate-in fade-in slide-in-from-bottom-4 duration-500 hover:border-primary/50 transition-colors">
@@ -99,9 +223,9 @@ const History = () => {
                   <Download size={18} />
                 </button>
                 <button
-                  onClick={() => handleDelete(item.id)}
+                  onClick={() => handleDelete(item)}
                   className="p-2 border border-error/20 text-error hover:bg-error/10 hover:border-error/40 rounded-lg transition-colors"
-                  title="Delete notes"
+                  title="Delete note"
                   aria-label="Delete history item"
                 >
                   <Trash2 size={18} />

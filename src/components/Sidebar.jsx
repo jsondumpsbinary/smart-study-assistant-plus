@@ -1,8 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Layers, Clock, Brain, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Layers, Clock, Brain, TrendingUp, LogOut, User } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
+  const { currentUser, logout } = useAuth();
+
   const navItems = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'Notes', path: '/notes', icon: <BookOpen size={20} /> },
@@ -46,12 +49,25 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-surface-hover">
-        <div className="bg-surface-hover p-4 rounded-xl flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-success"></span>
-          <span className="text-sm font-medium text-text-muted">Ready to learn</span>
+      {currentUser && (
+        <div className="p-4 border-t border-surface-hover space-y-3">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary border border-primary/30">
+              <User size={16} />
+            </div>
+            <div className="flex-1 truncate">
+              <p className="text-sm font-medium text-text-main truncate">@{currentUser}</p>
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors border border-transparent hover:border-error/20"
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
         </div>
-      </div>
+      )}
     </aside>
   );
 };

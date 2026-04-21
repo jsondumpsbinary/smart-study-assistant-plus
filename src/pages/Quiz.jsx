@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { evaluateQuiz } from '../services/api';
 import { Brain, CheckCircle2, AlertCircle } from 'lucide-react';
 import Spinner from '../components/Spinner';
+import { useAuth } from '../context/AuthContext';
 
 const Quiz = () => {
   const [quizzes, setQuizzes] = useState([]);
+  const { currentUser } = useAuth();
   const [topic, setTopic] = useState('');
   const [answers, setAnswers] = useState({});
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -16,9 +18,10 @@ const Quiz = () => {
     if (data) {
       const parsed = JSON.parse(data);
       if (parsed.quizzes) setQuizzes(parsed.quizzes);
-      if (parsed.flashcards && parsed.flashcards[0]) {
+      if (parsed.flashcards && parsed.flashcards[0] && currentUser) {
          // rough extraction of topic from history/session if needed
-         setTopic(JSON.parse(localStorage.getItem('studyHistory') || '[]')[0]?.topic || 'Current Topic');
+         const historyKey = `studyHistory_${currentUser}`;
+         setTopic(JSON.parse(localStorage.getItem(historyKey) || '[]')[0]?.topic || 'Current Topic');
       }
     }
   }, []);
@@ -46,14 +49,15 @@ const Quiz = () => {
        setEvaluation(evalData);
        
        // Save to progress history
-       const history = JSON.parse(localStorage.getItem('quizProgress') || '[]');
+       const progressKey = `quizProgress_${currentUser}`;
+       const history = JSON.parse(localStorage.getItem(progressKey) || '[]');
        history.push({
            date: new Date().toLocaleDateString(),
            topic: topic,
            score: evalData.score || 0,
            weaknesses: evalData.weakTopics || []
        });
-       localStorage.setItem('quizProgress', JSON.stringify(history));
+       localStorage.setItem(progressKey, JSON.stringify(history));
        
     } catch (err) {
        setError(err.message || "Evaluation servers are currently busy. Ensure your evaluate webhook is running.");

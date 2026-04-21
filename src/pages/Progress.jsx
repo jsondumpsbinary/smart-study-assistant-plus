@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Target, TrendingUp, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Progress = () => {
   const [quizHistory, setQuizHistory] = useState([]);
+  const { currentUser } = useAuth();
   const [weakTopics, setWeakTopics] = useState([]);
 
   useEffect(() => {
-    const rawHistory = JSON.parse(localStorage.getItem('quizProgress') || '[]');
-    setQuizHistory(rawHistory);
+    if (currentUser) {
+      const progressKey = `quizProgress_${currentUser}`;
+      const rawHistory = JSON.parse(localStorage.getItem(progressKey) || '[]');
+      setQuizHistory(rawHistory);
 
     // Aggregate weak topics
     const weaknesses = {};
@@ -24,7 +28,8 @@ const Progress = () => {
       .slice(0, 5); // top 5
       
     setWeakTopics(sortedWeaknesses);
-  }, []);
+    }
+  }, [currentUser]);
 
   return (
     <div className="space-y-8 pb-12">
