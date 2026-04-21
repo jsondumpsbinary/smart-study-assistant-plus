@@ -12,7 +12,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [rating, setRating] = useState(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, currentUserEmail } = useAuth();
 
   // Auto-load last active session on navigate back to dashboard
   useEffect(() => {
@@ -30,7 +30,13 @@ const Dashboard = () => {
     setResult(null);
 
     try {
-      const data = await generateStudyPlan(formData.topic, formData.days, formData.hoursPerDay, currentUser);
+      const data = await generateStudyPlan(
+        formData.topic,
+        formData.days,
+        formData.hoursPerDay,
+        currentUser,
+        currentUserEmail
+      );
       
       let finalNotes = data?.notes || data?.ai_output || '';
       let rawFlashcards = data?.flashcards || [];

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, LogIn } from 'lucide-react';
+import { User, LogIn, Mail } from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -15,9 +16,21 @@ const Login = () => {
       setError('Please enter a username');
       return;
     }
+
+    if (!email.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+    if (!isValidEmail) {
+      setError('Please enter a valid email address');
+      return;
+    }
     
     // Simplistic auth implementation without password logic
-    login(username);
+    login(username, normalizedEmail);
     navigate('/');
   };
 
@@ -59,8 +72,32 @@ const Login = () => {
               />
               <User className="absolute left-3.5 top-3.5 text-text-muted w-5 h-5" />
             </div>
-            {error && <p className="text-error text-sm mt-2">{error}</p>}
           </div>
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-text-main mb-2">
+              Email
+            </label>
+            <div className="relative">
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError('');
+                }}
+                className="w-full bg-background border border-surface-hover rounded-xl px-4 py-3 pl-11 text-text-main focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 bg-blur-sm transition-all"
+                placeholder="Enter your email"
+              />
+              <Mail className="absolute left-3.5 top-3.5 text-text-muted w-5 h-5" />
+            </div>
+            <p className="text-xs text-text-muted mt-2">
+              We&apos;ll use this for study reminder emails.
+            </p>
+          </div>
+
+          {error && <p className="text-error text-sm -mt-2">{error}</p>}
 
           <button
             type="submit"

@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, currentUserEmail, logout } = useAuth();
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -57,6 +57,9 @@ const Sidebar = () => {
             </div>
             <div className="flex-1 truncate">
               <p className="text-sm font-medium text-text-main truncate">@{currentUser}</p>
+              {currentUserEmail && (
+                <p className="text-xs text-text-muted truncate">{currentUserEmail}</p>
+              )}
             </div>
           </div>
           <button

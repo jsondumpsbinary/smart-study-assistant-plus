@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const Quiz = () => {
   const [quizzes, setQuizzes] = useState([]);
-  const { currentUser } = useAuth();
+  const { currentUser, currentUserEmail } = useAuth();
   const [topic, setTopic] = useState('');
   const [answers, setAnswers] = useState({});
   const [isEvaluating, setIsEvaluating] = useState(false);
@@ -45,7 +45,7 @@ const Quiz = () => {
            userAnswer: answers[i]
        }));
        
-       const evalData = await evaluateQuiz(topic, submission);
+       const evalData = await evaluateQuiz(topic, submission, currentUser, currentUserEmail);
        setEvaluation(evalData);
        
        // Save to progress history
