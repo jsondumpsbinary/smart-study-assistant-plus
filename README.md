@@ -1,11 +1,11 @@
 # ✨ Smart Study Assistant+
 
-An intelligent, modern study companion that automatically generates a 5-day study plan, in-depth text notes, and interactive flippable flashcards for any given topic using the Gemini AI through an n8n webhook backend.
+An intelligent and modern study companion that automatically generates a 5-day study plan, in-depth text notes, and interactive flippable flashcards for any given topic under minutes.
 
 ## 🚀 Features
 
 - **Dark Theme UI**: Premium aesthetic with deep gray/black backgrounds and vibrant purple accents using Tailwind CSS v4.
-- **Dynamic AI Generation**: Integrates with a backend n8n webhook pointing to `gemini-2.5-flash` to pull detailed academic context dynamically based on your inputs.
+- **Dynamic AI Generation**: Integrated with a backend n8n webhook pointing to `gemini-2.5-flash` to pull detailed academic content dynamically based on your inputs.
 - **Smart Formatting**: Client-side parsing automatically separates cohesive generated text into Study Notes and an array of individual Flashcards.
 - **Interactive Flashcards**: Fluid 3D flip card animations using `framer-motion` to test your knowledge seamlessly.
 - **State Management**: Beautiful multi-page routing handled with `react-router-dom` saving session data persistently.
@@ -13,10 +13,10 @@ An intelligent, modern study companion that automatically generates a 5-day stud
 ## 🛠 Tech Stack
 
 - **Frontend Core**: React 19 + Vite
-- **Styling**: Tailwind CSS v4 + `clsx` & `tailwind-merge`
+- **Styling**: Tailwind CSS v4 
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
-- **API Fetching**: Native Fetch API (formerly Axios)
+- **API Fetching**: Native Fetch API 
 
 ## 📋 Prerequisites
 
