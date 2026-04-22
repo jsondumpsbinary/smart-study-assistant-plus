@@ -17,7 +17,7 @@ An intelligent, modern study companion that automatically generates custom study
 - **Styling**: Tailwind CSS v4 
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
-- **Backend Flow**: n8n workflows (Webhooks, Notion API, Gmail API, LangChain nodes)
+- **Backend Flow**: n8n workflows (Webhooks, Notion API, Gmail API, AI nodes)
 - **AI Models**: Groq (e.g., LLaMA 3 70B / 120B)
 
 ## 📋 Prerequisites
@@ -71,7 +71,7 @@ The application relies on a powerful, unified n8n workflow that handles all AI l
    npm run dev
    ```
 
-4. Open `http://localhost:5173/` in your browser to view the application! Note that the Vite config proxies `/api` requests to `http://localhost:5678` (your local n8n instance).
+4. Open in your browser to view the application! Note that the Vite config proxies `/api` requests to `http://localhost:5678` (your local n8n instance).
 
 ## 📁 Project Structure
 
