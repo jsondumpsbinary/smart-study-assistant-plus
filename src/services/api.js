@@ -1,7 +1,9 @@
-const API_URL = '/api/webhook/generate-notes';
-const EVAL_API_URL = '/api/webhook/evaluate-quiz';
-const USER_NOTES_API_URL = '/api/webhook/get-user-notes';
-const FEEDBACK_API_URL = '/api/webhook/submit-feedback';
+const BASE_URL = import.meta.env.VITE_N8N_BASE_URL || '/api';
+
+const API_URL = `${BASE_URL}/webhook/generate-notes`;
+const EVAL_API_URL = `${BASE_URL}/webhook/evaluate-quiz`;
+const USER_NOTES_API_URL = `${BASE_URL}/webhook/get-user-notes`;
+const FEEDBACK_API_URL = `${BASE_URL}/webhook/submit-feedback`;
 
 export const generateStudyPlan = async (topic, days, hoursPerDay, username, email) => {
   try {
