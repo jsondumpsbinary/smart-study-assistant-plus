@@ -1,0 +1,386 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-notes",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "0acbc37f-c2e5-417d-8344-4f16869a02ba",
+      "name": "Webhook (API Entry)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        5184,
+        480
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5344,
+        688
+      ],
+      "id": "ae46d75c-195d-4bbe-a86d-484ce07274a3",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_GROQ_API_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert tutor. Create structured study notes for the topic '{{ $json.body.topic }}' targeted for an exam on '{{ $json.body.date }}'. Output ONLY valid JSON exactly matching the schema: { \"notes\": [{ \"heading\": \"title\", \"bullets\": [\"point1\", \"point2\"] }] }. DO NOT wrap the output in markdown code blocks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5344,
+        480
+      ],
+      "id": "3ee9d625-0a83-4833-88ba-b850f2b38b62",
+      "name": "1. Generate Notes"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate 10 high-yield flashcards for the topic '{{ $('Webhook (API Entry)').item.json.body.topic }}'. Balance difficulty: 4 easy, 4 medium, 2 hard. Output ONLY valid JSON: { \"flashcards\": [{ \"q\": \"question\", \"a\": \"answer\", \"difficulty\": 1 }] }. DO NOT wrap the output in markdown code blocks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5632,
+        480
+      ],
+      "id": "869dc451-5fd6-4876-9d92-4097770b0ebd",
+      "name": "2. Generate Flashcards"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The user has an exam on '{{ $('Webhook (API Entry)').item.json.body.date }}' for '{{ $('Webhook (API Entry)').item.json.body.topic }}' and can study '{{ $('Webhook (API Entry)').item.json.body.hours }}' hours per day. Generate a daily plan. Output ONLY valid JSON: { \"plan\": [{ \"day\": \"Day 1\", \"topic_focus\": \"string\", \"task\": \"task description\" }] }. DO NOT wrap the output in markdown code blocks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5904,
+        480
+      ],
+      "id": "2c00328b-56fa-4c88-8cd7-9266b3e8b9a0",
+      "name": "3. Generate Plan"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a 5 question quiz on '{{ $('Webhook (API Entry)').item.json.body.topic }}'. Include 3 MCQs and 2 short answer questions. Output ONLY valid JSON: { \"quizzes\": [{ \"type\": \"mcq\", \"question\": \"Question 1\", \"options\": [\"A\", \"B\", \"C\", \"D\"], \"answer\": \"A\" }, { \"type\": \"short\", \"question\": \"Question 2\", \"answer\": \"Expected answer roughly\" }] }. DO NOT wrap the output in markdown code blocks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        6176,
+        480
+      ],
+      "id": "e48f321e-0189-44b4-9113-1de582bb17a5",
+      "name": "4. Generate Quiz"
+    },
+    {
+      "parameters": {
+        "jsCode": "const safeParse = (nodeData) => {\n  if (!nodeData) return {};\n  const rawText = nodeData.json.text || nodeData.json.output || nodeData.json.message?.content || nodeData.json.content?.parts?.[0]?.text || \"\";\n  const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();\n  try {\n    return JSON.parse(cleaned);\n  } catch(e) {\n    return {};\n  }\n};\n\nconst notesResponse = safeParse($item(0).$node[\"1. Generate Notes\"]);\nconst flashResponse = safeParse($item(0).$node[\"2. Generate Flashcards\"]);\nconst planResponse = safeParse($item(0).$node[\"3. Generate Plan\"]);\nconst quizResponse = safeParse($item(0).$node[\"4. Generate Quiz\"]);\n\nreturn {\n  notes: notesResponse.notes || notesResponse,\n  flashcards: flashResponse.flashcards || flashResponse,\n  plan: planResponse.plan || planResponse,\n  quizzes: quizResponse.quizzes || quizResponse\n};"
+      },
+      "id": "8b1f9d10-6cf6-4c61-9da1-f6bbe3ad0275",
+      "name": "Merge & Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6448,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5632,
+        688
+      ],
+      "id": "635e424d-d7f0-46c7-acf3-67c4cc42c3f6",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id":  "YOUR_GROQ_API_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5904,
+        688
+      ],
+      "id": "15d8a6c7-f329-49e7-a162-71b366a23269",
+      "name": "Groq Chat Model2",
+      "credentials": {
+        "groqApi": {
+          "id":  "YOUR_GROQ_API_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        6176,
+        688
+      ],
+      "id": "72b362de-6c8f-49ab-b109-d5e42b6e7a53",
+      "name": "Groq Chat Model Quiz",
+      "credentials": {
+        "groqApi": {
+          "id":  "YOUR_GROQ_API_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_DATABASE_URL",
+          "mode": "url"
+        },
+        "title": "={{ $('Webhook (API Entry)').item.json.body.topic }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Subject-name|title",
+              "title": "={{ $('Webhook (API Entry)').item.json.body.topic }}"
+            },
+            {
+              "key": "Content|rich_text",
+              "textContent": "={{ JSON.stringify($json.notes).substring(0, 2000) }}"
+            },
+            {
+              "key": "Flashcards|rich_text",
+              "textContent": "={{ JSON.stringify($json.flashcards).substring(0, 2000) }}"
+            },
+            {
+              "key": "Username|rich_text",
+              "textContent": "={{ $('Webhook (API Entry)').item.json.body.username }}"
+            },
+            {
+              "key": "Email|rich_text",
+              "textContent": "={{ $('Webhook (API Entry)').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        6720,
+        480
+      ],
+      "id": "02cd3b83-c71f-4c9d-8943-4508c21b1b4a",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Merge & Format Output').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6992,
+        480
+      ],
+      "id": "6266a98c-9682-45d8-bb57-eee422c0b00f",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook (API Entry)": {
+      "main": [
+        [
+          {
+            "node": "1. Generate Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "1. Generate Notes",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Generate Notes": {
+      "main": [
+        [
+          {
+            "node": "2. Generate Flashcards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Generate Flashcards": {
+      "main": [
+        [
+          {
+            "node": "3. Generate Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Generate Plan": {
+      "main": [
+        [
+          {
+            "node": "4. Generate Quiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Generate Quiz": {
+      "main": [
+        [
+          {
+            "node": "Merge & Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Format Output": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "2. Generate Flashcards",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "3. Generate Plan",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model Quiz": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "4. Generate Quiz",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a database page": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  }
+}
