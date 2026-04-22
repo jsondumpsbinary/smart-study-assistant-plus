@@ -1,0 +1,125 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "submit-feedback",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-feedback",
+      "name": "Webhook (Feedback)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -160
+      ],
+      "webhookId": "submit-feedback-webhook"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "YOUR_NOTION_DATABASE_URL"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Topic|title",
+              "title": "={{ $item(\"0\").$node[\"Webhook (Feedback)\"].json[\"body\"][\"topic\"] }}"
+            },
+            {
+              "key": "Email|rich_text",
+              "textContent": "={{ $item(\"0\").$node[\"Webhook (Feedback)\"].json[\"body\"][\"email\"] }}"
+            },
+            {
+              "key": "Rating|number",
+              "numberValue": "={{ $item(\"0\").$node[\"Webhook (Feedback)\"].json[\"body\"][\"rating\"] }}"
+            },
+            {
+              "key": "Username|rich_text",
+              "textContent": "={{ $item(\"0\").$node[\"Webhook (Feedback)\"].json[\"body\"][\"username\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        -160
+      ],
+      "id": "notion-save-feedback",
+      "name": "Save Feedback to Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "YOUR_NOTION_CREDENTIAL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        160,
+        -160
+      ],
+      "id": "respond-feedback",
+      "name": "Respond Feedback"
+    }
+  ],
+  "connections": {
+    "Webhook (Feedback)": {
+      "main": [
+        [
+          {
+            "node": "Save Feedback to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Feedback to Notion": {
+      "main": [
+        [
+          {
+            "node": "Respond Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
