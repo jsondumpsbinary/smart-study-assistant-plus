@@ -21,12 +21,21 @@ export const generateStudyPlan = async (topic, days, hoursPerDay, username, emai
       })
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      throw new Error(`Server error: ${response.statusText}`);
+      throw new Error(`Server error: ${response.status} ${response.statusText} - ${responseText}`);
     }
 
-    const data = await response.json();
-    return data;
+    if (!responseText.trim()) {
+      throw new Error('Server returned an empty response. If using Cloudflare Tunnel, ensure n8n is running and the webhook executed successfully.');
+    }
+
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Received invalid JSON from server: ${responseText.substring(0, 50)}...`);
+    }
   } catch (error) {
     throw new Error(error.message || 'Failed to fetch the data. Check if the webhook is running.');
   }
