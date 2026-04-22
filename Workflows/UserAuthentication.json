@@ -1,0 +1,117 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "get-user-notes",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "48c21d14-f447-4b8e-b791-d865b2e0776e",
+      "name": "Webhook (Get User Notes)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-128, 16],
+      "webhookId": "get-user-notes-api"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_DATABASE_ID",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "1975f894-a970-49b7-b377-7f4dcf9909b3",
+      "name": "Get All Database Pages",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [128, 16],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "const username = ($('Webhook (Get User Notes)').item.json.body.username || '').trim().toLowerCase();\n\nconst extractRichText = (prop) => {\n  if (!prop) return '';\n  if (typeof prop === 'string') return prop;\n  if (Array.isArray(prop.rich_text)) {\n    return prop.rich_text.map(r => r.plain_text || r.text?.content || '').join('');\n  }\n  if (Array.isArray(prop.title)) {\n    return prop.title.map(r => r.plain_text || r.text?.content || '').join('');\n  }\n  return '';\n};\n\nconst parseJsonSafely = (value, fallback) => {\n  try {\n    return JSON.parse(value);\n  } catch {\n    return fallback;\n  }\n};\n\nconst items = $input.all();\n\nconst results = items\n  .filter(item => {\n    const props = item.json.properties || {};\n    const owner = extractRichText(props.Username).trim().toLowerCase();\n    return owner === username;\n  })\n  .map(item => {\n    const props = item.json.properties || {};\n    const topic = extractRichText(props['Subject-name']) || 'Untitled';\n    const notesRaw = extractRichText(props.Content);\n    const flashcardsRaw = extractRichText(props.Flashcards);\n\n    return {\n      id: item.json.id,\n      topic,\n      username,\n      createdTime: item.json.created_time,\n      lastEditedTime: item.json.last_edited_time,\n      notes: parseJsonSafely(notesRaw, notesRaw),\n      flashcards: parseJsonSafely(flashcardsRaw, flashcardsRaw)\n    };\n  })\n  .sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));\n\nreturn [{ json: { username, items: results } }];"
+      },
+      "id": "a90e097f-75db-426e-b7a6-a1e265546757",
+      "name": "Filter By Username",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 16]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Filter By Username').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "7c4c9eab-de8f-4d1d-8aa5-2b7fbf147278",
+      "name": "Respond With User Notes",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [672, 16]
+    }
+  ],
+  "connections": {
+    "Webhook (Get User Notes)": {
+      "main": [
+        [
+          {
+            "node": "Get All Database Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Database Pages": {
+      "main": [
+        [
+          {
+            "node": "Filter By Username",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter By Username": {
+      "main": [
+        [
+          {
+            "node": "Respond With User Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
