@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 19 * * *"
+            }
+          ]
+        }
+      },
+      "id": "5781ddc3-ecb3-4083-b6d2-309ccfa7fb9c",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [432, 544]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_DATABASE_ID_SCORES",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "6208f5ea-b0e5-4a23-b94a-bf940e81c594",
+      "name": "Get Scores",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [688, 544],
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Set in n8n"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_DATABASE_ID_NOTES",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [928, 544],
+      "id": "160e7db4-8ab2-4d7f-8db8-4e0c7bb50287",
+      "name": "Get All Notes Pages",
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Set in n8n"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scores = $('Get Scores').all();\nconst notesDb = $('Get All Notes Pages').all();\n\nconst getProp = (item, names) => {\n  for (const name of names) {\n    if (item.json[name] !== undefined) return item.json[name];\n    if (item.json.properties?.[name] !== undefined) {\n       const p = item.json.properties[name];\n       if (p === null) return '';\n       if (p.type === 'rich_text') return p.rich_text.map(r => r.plain_text).join('');\n       if (p.type === 'title') return p.title.map(r => r.plain_text).join('');\n       if (p.type === 'checkbox') return p.checkbox;\n       if (p.type === 'email') return p.email;\n       if (p.type === 'date') return p.date?.start || '';\n       if (p.type === 'select') return p.select?.name || '';\n       return p;\n    }\n  }\n  return '';\n};\n\nconst deletedTopicsByUser = new Map();\n\nfor (const item of notesDb) {\n  const username = String(getProp(item, ['Username', 'username']) || '').trim().toLowerCase();\n  const topic = String(getProp(item, ['Subject-name', 'Topic', 'topic']) || '').trim();\n  const deleted = Boolean(getProp(item, ['Deleted', 'deleted']));\n\n  if (!username || !topic || !deleted) continue;\n\n  if (!deletedTopicsByUser.has(username)) {\n    deletedTopicsByUser.set(username, new Set());\n  }\n  deletedTopicsByUser.get(username).add(topic.toLowerCase());\n}\n\nconst byUser = {};\n\nfor (const item of scores) {\n  const username = String(getProp(item, ['property_username', 'Username', 'username']) || '').trim().toLowerCase();\n  const email = String(getProp(item, ['property_email', 'Email', 'email']) || '').trim().toLowerCase();\n  const topic = String(getProp(item, ['property_topic', 'Topic', 'topic']) || '').trim();\n  const weakTopicsRaw = String(getProp(item, ['property_weaktopics', 'property_weak_topics', 'Weak Topics', 'weak_topics', 'weakTopics']) || '').trim();\n  const lastAttempt = String(getProp(item, ['property_lastattempt', 'property_last_attempt', 'Last Attempt', 'last_attempt', 'lastAttempt']) || '');\n\n  if (!username || !email || !weakTopicsRaw) continue;\n\n  const deletedTopics = deletedTopicsByUser.get(username) || new Set();\n  if (topic && deletedTopics.has(topic.toLowerCase())) continue;\n\n  const weakTopics = weakTopicsRaw.split(',').map((t) => t.trim()).filter(Boolean);\n  if (!weakTopics.length) continue;\n\n  if (!byUser[email]) {\n    byUser[email] = {\n      username,\n      email,\n      latestAttempt: lastAttempt || '',\n      topics: new Set(),\n      weakTopics: new Set()\n    };\n  }\n\n  if (\n    lastAttempt &&\n    (!byUser[email].latestAttempt || new Date(lastAttempt) > new Date(byUser[email].latestAttempt))\n  ) {\n    byUser[email].latestAttempt = lastAttempt;\n  }\n\n  if (topic) byUser[email].topics.add(topic);\n  weakTopics.forEach((wt) => byUser[email].weakTopics.add(wt));\n}\n\nreturn Object.values(byUser).map((user) => {\n  const weakTopics = Array.from(user.weakTopics).slice(0, 6);\n  const topics = Array.from(user.topics).slice(0, 3);\n\n  return {\n    json: {\n      email: user.email,\n      username: user.username,\n      subject: 'Time to revise your weak topics',\n      message: `Hi ${user.username},\\n\\nIt is time to come back and study. Based on your recent quiz performance, here are the weak topics you should revise today:\\n\\n- ${weakTopics.join('\\n- ')}\\n\\nRecent study areas: ${topics.join(', ') || 'your saved topics'}\\n\\nA short revision session today will help strengthen these concepts.\\n\\nYour Smart Study Assistant`\n    }\n  };\n});"
+      },
+      "id": "586e4150-6336-446b-bed5-2305bd0c64da",
+      "name": "Build Reminder Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1152, 544]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.message }}",
+        "options": {}
+      },
+      "id": "b424c660-4b40-42cb-9d24-b8024ac9341d",
+      "name": "Send Gmail Reminder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1376, 544],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Set in n8n"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [[{ "node": "Get Scores", "type": "main", "index": 0 }]]
+    },
+    "Get Scores": {
+      "main": [[{ "node": "Get All Notes Pages", "type": "main", "index": 0 }]]
+    },
+    "Get All Notes Pages": {
+      "main": [[{ "node": "Build Reminder Emails", "type": "main", "index": 0 }]]
+    },
+    "Build Reminder Emails": {
+      "main": [[{ "node": "Send Gmail Reminder", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  }
+}
