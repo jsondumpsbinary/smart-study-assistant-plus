@@ -1,0 +1,220 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evaluate-quiz",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "41e26b96-71a1-4aa7-996e-8438c777def0",
+      "name": "Evaluate Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        128,
+        48
+      ],
+      "webhookId": "11c97614-73a4-41b0-8845-f272408fea7e"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        272,
+        208
+      ],
+      "id": "9b8d0720-a217-4cfe-89a8-4419e71889ab",
+      "name": "Groq Chat Evaluator",
+      "credentials": {
+        "groqApi": {
+          "id": "YOUR_GROQ_CREDENTIAL_ID",
+          "name": "Groq account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are grading an exam on '{{ $json.body.topic }}'. Evaluate the user answers: {{ JSON.stringify($json.body.answers) }}.\nOutput ONLY valid JSON matching this exact structure:\n{\n  \"score\": integer_0_to_100,\n  \"weakTopics\": [\"List\", \"Of\", \"Subtopics\"],\n  \"suggestions\": \"Actionable feedback\",\n  \"results\": [\n    {\n      \"isCorrect\": true_or_false,\n      \"explanation\": \"Short 1-2 sentence explanation of why it is right or wrong and what the correct answer is.\"\n    }\n  ]\n}\nThe 'results' array must have the exact same length and order as the user's 'answers' array. DO NOT wrap the output in markdown code blocks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        384,
+        48
+      ],
+      "id": "5bfbfd36-22c6-4c29-922d-e96a548d12e6",
+      "name": "Grade Submission"
+    },
+    {
+      "parameters": {
+        "jsCode": "const safeParse = (nodeData) => {\n  if (!nodeData) return {};\n  const rawText = nodeData.json.text || nodeData.json.output || nodeData.json.message?.content || nodeData.json.content?.parts?.[0]?.text || '';\n  const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();\n  try {\n    return JSON.parse(cleaned);\n  } catch (e) {\n    return {};\n  }\n};\n\nconst parsed = safeParse($item(0).$node['Grade Submission']);\nconst body = $('Evaluate Webhook').item.json.body || {};\n\nreturn {\n  score: parsed.score || 0,\n  weakTopics: parsed.weakTopics || [],\n  suggestions: parsed.suggestions || '',\n  results: parsed.results || [],\n  topic: body.topic || 'Unknown Topic',\n  username: body.username || 'guest',\n  email: body.email || '',\n  lastAttempt: new Date().toISOString()\n};"
+      },
+      "id": "9d538dfb-d5ed-4014-9da4-5b786332a1de",
+      "name": "Format JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "YOUR_NOTION_DATABASE_URL",
+          "mode": "url"
+        },
+        "title": "={{ $json.topic }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Topic|title",
+              "title": "={{ $json.topic }}"
+            },
+            {
+              "key": "Username|rich_text",
+              "textContent": "={{ $json.username }}"
+            },
+            {
+              "key": "Email|rich_text",
+              "textContent": "={{ $json.email }}"
+            },
+            {
+              "key": "Score|number",
+              "numberValue": "={{ $json.score }}"
+            },
+            {
+              "key": "WeakTopics|rich_text",
+              "textContent": "={{ ($json.weakTopics || []).join(', ') }}"
+            },
+            {
+              "key": "LastAttempt|date",
+              "date": "={{ $json.lastAttempt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        48
+      ],
+      "id": "a7deec13-ef76-4cd1-be34-ab3f95fd97eb",
+      "name": "Save Score To Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "YOUR_NOTION_CREDENTIAL_ID",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Format JSON').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1088,
+        48
+      ],
+      "id": "a6d459fd-870d-41af-a91c-b20bf9df91dd",
+      "name": "Respond Evaluate"
+    }
+  ],
+  "connections": {
+    "Evaluate Webhook": {
+      "main": [
+        [
+          {
+            "node": "Grade Submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Evaluator": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Grade Submission",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grade Submission": {
+      "main": [
+        [
+          {
+            "node": "Format JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format JSON": {
+      "main": [
+        [
+          {
+            "node": "Save Score To Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Score To Notion": {
+      "main": [
+        [
+          {
+            "node": "Respond Evaluate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  }
+}
