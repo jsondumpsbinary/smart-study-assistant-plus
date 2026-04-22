@@ -1,11 +1,11 @@
 # ✨ Smart Study Assistant+
 
-An intelligent, modern study companion that automatically generates custom study plans, in-depth text notes, interactive flashcards, and quizzes for any given topic under minutes. It utilizes an n8n webhook backend with LangChain integration (powered by Groq AI models) to dynamically curate your learning materials and adapt to your feedback over time.
+An intelligent, modern study companion that automatically generates custom study plans, in-depth text notes, interactive flashcards, and quizzes for any given topic under minutes. It utilizes an n8n webhook backend (powered by Groq AI models) to help you in learning materials and adapt to your feedback over time.
 
 ## 🚀 Features
 
 - **Dark Theme UI**: Premium aesthetic with deep gray/black backgrounds and vibrant purple accents using Tailwind CSS v4.
-- **Dynamic AI Generation**: Integrates with a backend n8n webhook (Groq models via LangChain) to pull detailed academic context dynamically based on your inputs.
+- **Dynamic AI Generation**: Integrates with a backend n8n webhook (Groq model) to pull detailed academic content dynamically based on your inputs.
 - **Adaptive AI Feedback Loop**: Rate the generated study materials! Your feedback is securely logged to a Notion database and read during your next generation request to continually improve and personalize the AI's output.
 - **Interactive Flashcards & Quizzes**: Fluid 3D flip card animations to test your knowledge seamlessly, plus a dedicated quiz section complete with AI-graded short-answer and multiple-choice questions.
 - **State Management & History**: Beautiful multi-page routing handled with `react-router-dom`, saving session data persistently in local storage so you can easily review past study sessions.
