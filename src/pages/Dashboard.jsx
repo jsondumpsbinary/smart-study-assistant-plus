@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { generateStudyPlan } from '../services/api';
+import { generateStudyPlan, submitFeedback } from '../services/api';
 import StudyForm from '../components/StudyForm';
 import NoteDisplay from '../components/NoteDisplay';
 import Flashcard from '../components/Flashcard';
@@ -12,6 +12,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const [rating, setRating] = useState(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const { currentUser, currentUserEmail } = useAuth();
 
   // Auto-load last active session on navigate back to dashboard
@@ -72,11 +73,13 @@ const Dashboard = () => {
 
       const hasValidData = finalNotes.length > 0;
       const resultData = hasValidData ? {
+        topic: formData.topic,
         notes: finalNotes,
         flashcards: mappedFlashcards,
         plan: data?.plan,
         quizzes: rawQuizzes
       } : {
+        topic: formData.topic,
         notes: `Here is your generated study plan for ${formData.topic}. It spans across ${formData.days} days, requiring ${formData.hoursPerDay} hours per day.\n\nEnjoy your learning journey!`,
         flashcards: [
            { question: "What is this topic mainly about?", answer: formData.topic },
@@ -105,6 +108,22 @@ const Dashboard = () => {
       setError(err.message || 'An unexpected error occurred while generating your plan.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!rating || !result?.topic) return;
+    setIsSubmittingFeedback(true);
+    try {
+      await submitFeedback(result.topic, rating, currentUser, currentUserEmail);
+      setFeedbackSubmitted(true);
+    } catch (err) {
+      console.error("Failed to submit feedback", err);
+      // We can still show the success message to not disrupt UX if Notion fails, 
+      // or optionally show a toast error here. For now, just mark it submitted.
+      setFeedbackSubmitted(true);
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -190,11 +209,18 @@ const Dashboard = () => {
                   </button>
                 </div>
                 <button 
-                  onClick={() => setFeedbackSubmitted(true)}
-                  disabled={!rating}
-                  className="bg-primary hover:bg-primary-hover disabled:bg-surface-hover disabled:text-text-muted text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                  onClick={handleFeedbackSubmit}
+                  disabled={!rating || isSubmittingFeedback}
+                  className="bg-primary hover:bg-primary-hover disabled:bg-surface-hover disabled:text-text-muted text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
                 >
-                  Submit Feedback
+                  {isSubmittingFeedback ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Feedback'
+                  )}
                 </button>
               </>
             ) : (

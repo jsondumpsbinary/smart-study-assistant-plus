@@ -1,6 +1,7 @@
 const API_URL = '/api/webhook/generate-notes';
 const EVAL_API_URL = '/api/webhook/evaluate-quiz';
 const USER_NOTES_API_URL = '/api/webhook/get-user-notes';
+const FEEDBACK_API_URL = '/api/webhook/submit-feedback';
 
 export const generateStudyPlan = async (topic, days, hoursPerDay, username, email) => {
   try {
@@ -85,5 +86,31 @@ export const getUserNotes = async (username) => {
     return data;
   } catch (error) {
     throw new Error(error.message || 'Failed to fetch user notes.');
+  }
+};
+
+export const submitFeedback = async (topic, rating, username, email) => {
+  try {
+    const response = await fetch(FEEDBACK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        topic: topic,
+        rating: rating,
+        username: username || "Guest",
+        email: email || ''
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    throw new Error(error.message || 'Failed to submit feedback.');
   }
 };
